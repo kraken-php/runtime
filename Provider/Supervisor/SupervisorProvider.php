@@ -1,35 +1,35 @@
 <?php
 
-namespace Kraken\Runtime\Provider\Error;
+namespace Kraken\Runtime\Provider\Supervisor;
 
 use Exception;
 use Kraken\Config\ConfigInterface;
 use Kraken\Core\CoreInterface;
 use Kraken\Core\Service\ServiceProvider;
 use Kraken\Core\Service\ServiceProviderInterface;
-use Kraken\Supervision\SolverInterface;
-use Kraken\Supervision\SupervisorInterface;
-use Kraken\Supervision\SupervisorPluginInterface;
+use Kraken\Supervisor\SolverInterface;
+use Kraken\Supervisor\SupervisorInterface;
+use Kraken\Supervisor\SupervisorPluginInterface;
 use Kraken\Throwable\Exception\Logic\Resource\ResourceUndefinedException;
 use Kraken\Throwable\Exception\Logic\InvalidArgumentException;
 
-class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
+class SupervisorProvider extends ServiceProvider implements ServiceProviderInterface
 {
     /**
      * @var string[]
      */
     protected $requires = [
         'Kraken\Config\ConfigInterface',
-        'Kraken\Supervision\SupervisorInterface',
-        'Kraken\Supervision\SolverFactoryInterface'
+        'Kraken\Supervisor\SupervisorInterface',
+        'Kraken\Supervisor\SolverFactoryInterface'
     ];
 
     /**
      * @var string[]
      */
     protected $provides = [
-        'Kraken\Runtime\Supervision\Base\SupervisionManagerInterface',
-        'Kraken\Runtime\Supervision\Remote\SupervisionManagerInterface'
+        'Kraken\Runtime\Supervisor\SupervisorBaseInterface',
+        'Kraken\Runtime\Supervisor\SupervisorRemoteInterface'
     ];
 
     /**
@@ -39,16 +39,16 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
     {
         $config = $core->make('Kraken\Config\ConfigInterface');
 
-        $errorManager    = $core->make('Kraken\Supervision\SupervisorInterface', $config->get('error.manager.params'));
-        $errorSupervisor = $core->make('Kraken\Supervision\SupervisorInterface', $config->get('error.supervisor.params'));
+        $errorManager    = $core->make('Kraken\Supervisor\SupervisorInterface', $config->get('error.manager.params'));
+        $errorSupervisor = $core->make('Kraken\Supervisor\SupervisorInterface', $config->get('error.supervisor.params'));
 
         $core->instance(
-            'Kraken\Runtime\Supervision\Base\SupervisionManagerInterface',
+            'Kraken\Runtime\Supervisor\SupervisorBaseInterface',
             $errorManager
         );
 
         $core->instance(
-            'Kraken\Runtime\Supervision\Remote\SupervisionManagerInterface',
+            'Kraken\Runtime\Supervisor\SupervisorRemoteInterface',
             $errorSupervisor
         );
     }
@@ -59,11 +59,11 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
     protected function unregister(CoreInterface $core)
     {
         $core->remove(
-            'Kraken\Runtime\Supervision\Base\SupervisionManagerInterface'
+            'Kraken\Runtime\Supervisor\SupervisorBaseInterface'
         );
 
         $core->remove(
-            'Kraken\Runtime\Supervision\Remote\SupervisionManagerInterface'
+            'Kraken\Runtime\Supervisor\SupervisorRemoteInterface'
         );
     }
 
@@ -75,19 +75,19 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
     {
         $config = $core->make('Kraken\Config\ConfigInterface');
 
-        $errorManager    = $core->make('Kraken\Runtime\Supervision\Base\SupervisionManagerInterface');
-        $errorSupervisor = $core->make('Kraken\Runtime\Supervision\Remote\SupervisionManagerInterface');
+        $baseSupervisor   = $core->make('Kraken\Runtime\Supervisor\SupervisorBaseInterface');
+        $remoteSupervisor = $core->make('Kraken\Runtime\Supervisor\SupervisorRemoteInterface');
 
-        $this->bootSupervisor($errorManager, $config);
-        $this->bootErrorSupervisor($errorSupervisor, $config);
+        $this->bootBaseSupervisor($baseSupervisor, $config);
+        $this->bootRemoteSupervisor($remoteSupervisor, $config);
     }
 
     /**
-     * @param SupervisorInterface $manager
+     * @param SupervisorInterface $supervisor
      * @param ConfigInterface $config
      * @throws Exception
      */
-    private function bootSupervisor(SupervisorInterface $manager, ConfigInterface $config)
+    private function bootBaseSupervisor(SupervisorInterface $supervisor, ConfigInterface $config)
     {
         $handlers = (array) $config->get('error.manager.handlers');
 
@@ -99,15 +99,15 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
 
         $plugins = (array) $config->get('error.manager.plugins');
 
-        $this->bootSupervisorOrSupervisor($manager, $default, $handlers, $plugins);
+        $this->bootBaseOrRemote($supervisor, $default, $handlers, $plugins);
     }
 
     /**
-     * @param SupervisorInterface $manager
+     * @param SupervisorInterface $supervisor
      * @param ConfigInterface $config
      * @throws Exception
      */
-    private function bootErrorSupervisor(SupervisorInterface $manager, ConfigInterface $config)
+    private function bootRemoteSupervisor(SupervisorInterface $supervisor, ConfigInterface $config)
     {
         $handlers = (array) $config->get('error.supervisor.handlers');
 
@@ -117,20 +117,20 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
 
         $plugins = (array) $config->get('error.supervisor.plugins');
 
-        $this->bootSupervisorOrSupervisor($manager, $default, $handlers, $plugins);
+        $this->bootBaseOrRemote($supervisor, $default, $handlers, $plugins);
     }
 
     /**
-     * @param SupervisorInterface $manager
+     * @param SupervisorInterface $supervisor
      * @param string[] $default
      * @param string[] $handlers
      * @param string[] $plugins
      * @throws Exception
      */
-    private function bootSupervisorOrSupervisor($manager, $default = [], $handlers = [], $plugins = [])
+    private function bootBaseOrRemote($supervisor, $default = [], $handlers = [], $plugins = [])
     {
-        $this->setHandlers($manager, $handlers);
-        $this->setHandlers($manager, $default);
+        $this->setHandlers($supervisor, $handlers);
+        $this->setHandlers($supervisor, $default);
 
         foreach ($plugins as $pluginClass)
         {
@@ -146,19 +146,19 @@ class ErrorProvider extends ServiceProvider implements ServiceProviderInterface
                 throw new InvalidArgumentException("SupervisorPlugin [$pluginClass] does not implement SupervisorPluginInterface.");
             }
 
-            $plugin->registerPlugin($manager);
+            $plugin->registerPlugin($supervisor);
         }
     }
 
     /**
-     * @param SupervisorInterface $manager
+     * @param SupervisorInterface $supervisor
      * @param SolverInterface[]|string[]|string[][] $handlers
      */
-    private function setHandlers(SupervisorInterface $manager, $handlers)
+    private function setHandlers(SupervisorInterface $supervisor, $handlers)
     {
         foreach ($handlers as $exception=>$handler)
         {
-            $manager->setHandler($exception, $handler);
+            $supervisor->setHandler($exception, $handler);
         }
     }
 }
