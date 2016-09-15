@@ -1,10 +1,10 @@
 <?php
 
-namespace Kraken\Runtime\Supervisor\Runtime;
+namespace Kraken\Runtime\Supervision\Runtime;
 
 use Kraken\Channel\ChannelInterface;
-use Kraken\Runtime\Supervisor\Solver;
-use Kraken\Supervisor\SolverInterface;
+use Kraken\Runtime\Supervision\Solver;
+use Kraken\Supervision\SolverInterface;
 use Kraken\Runtime\RuntimeCommand;
 use Error;
 use Exception;

@@ -1,14 +1,14 @@
 <?php
 
-namespace Kraken\Runtime\Supervisor\Runtime;
+namespace Kraken\Runtime\Supervision\Runtime;
 
-use Kraken\Runtime\Supervisor\Solver;
-use Kraken\Supervisor\SolverInterface;
+use Kraken\Runtime\Supervision\Solver;
+use Kraken\Supervision\SolverInterface;
 use Kraken\Runtime\Runtime;
 use Error;
 use Exception;
 
-class RuntimeDestroy extends Solver implements SolverInterface
+class RuntimeDestroySoft extends Solver implements SolverInterface
 {
     /**
      * @var string[]
@@ -26,6 +26,6 @@ class RuntimeDestroy extends Solver implements SolverInterface
     {
         $manager = $this->runtime->getManager();
 
-        return $manager->destroyRuntime($params['origin'], Runtime::DESTROY_FORCE);
+        return $manager->destroyRuntime($params['origin'], Runtime::DESTROY_FORCE_SOFT);
     }
 }

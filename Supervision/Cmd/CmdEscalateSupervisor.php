@@ -1,9 +1,9 @@
 <?php
 
-namespace Kraken\Runtime\Supervisor\Cmd;
+namespace Kraken\Runtime\Supervision\Cmd;
 
-use Kraken\Runtime\Supervisor\Solver;
-use Kraken\Supervisor\SolverInterface;
+use Kraken\Runtime\Supervision\Solver;
+use Kraken\Supervision\SolverInterface;
 use Kraken\Promise\Promise;
 use Error;
 use Exception;
